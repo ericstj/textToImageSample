@@ -1,9 +1,12 @@
 ﻿@page "/"
 @using System.ComponentModel
+@using System.Runtime.InteropServices
+@using textToImage.Web.Services.Images
 @inject IChatClient ChatClient
 @inject ITextToImageClient ImageClient
 @inject NavigationManager Nav
 @inject SemanticSearch Search
+@inject IImageCacheService ImageCache
 @implements IDisposable
 
 <PageTitle>Chat</PageTitle>
@@ -116,20 +119,35 @@
             $"<result filename=\"{result.DocumentId}\" page_number=\"{result.PageNumber}\">{result.Text}</result>");
     }
 
-    [Description("Generates images based on a text description")]
-    private async Task<IEnumerable<AIContent>> GenerateImagesAsync(
+    [Description("Generates images based on a text description, returns either a full or partial URI pointing at the image")]
+    private async IAsyncEnumerable<AIContent> GenerateImagesAsync(
         [Description("A detailed description of the image to generate")] string prompt,
         [Description("The number of images to generate.  Some models only support generating one image at a time.")] int count = 1)
     {
         var options = new TextToImageOptions()
         {
-            ContentType = TextToImageContentType.Uri,
+            ContentType = TextToImageContentType.Data, // Changed to Base64 to get the actual image data
             Count = count,
         };
 
         var response = await ImageClient.GenerateImagesAsync(prompt, options);
 
-        return response.Contents;
+        foreach (var content in response.Contents)
+        {
+            if (content is not DataContent dataContent)
+            {
+                yield return content;
+                continue;
+            }
+
+            var bytes = MemoryMarshal.TryGetArray(dataContent.Data, out var segment)
+                ? segment.Array!
+                : dataContent.Data.ToArray();
+
+            var cacheUri = await ImageCache.CacheImageAsync(bytes, dataContent.MediaType);
+
+            yield return new UriContent(Nav.ToAbsoluteUri(cacheUri), dataContent.MediaType);
+        }
     }
 
     public void Dispose()

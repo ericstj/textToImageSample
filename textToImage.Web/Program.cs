@@ -3,10 +3,14 @@ using textToImage.Web.Components;
 using textToImage.Web.Services;
 using textToImage.Web.Services.Ingestion;
 using OpenAI;
+using textToImage.Web.Services.Images;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 builder.Services.AddRazorComponents().AddInteractiveServerComponents();
+
+// Add controllers for the image API
+builder.Services.AddControllers();
 
 var openai = builder.AddAzureOpenAIClient("openai");
 openai.AddChatClient("gpt-4o-mini")
@@ -21,6 +25,10 @@ builder.Services.AddAzureAISearchCollection<IngestedChunk>("data-texttoimage-chu
 builder.Services.AddAzureAISearchCollection<IngestedDocument>("data-texttoimage-documents");
 builder.Services.AddScoped<DataIngestor>();
 builder.Services.AddSingleton<SemanticSearch>();
+
+// Register image cache services
+builder.Services.AddSingleton<IImageCacheService, ImageCacheService>();
+builder.Services.AddHostedService<ImageCacheBackgroundService>();
 
 var app = builder.Build();
 
@@ -38,6 +46,10 @@ app.UseHttpsRedirection();
 app.UseAntiforgery();
 
 app.UseStaticFiles();
+
+// Map controllers for the image API
+app.MapControllers();
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
