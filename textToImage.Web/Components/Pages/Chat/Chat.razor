@@ -119,14 +119,13 @@
             $"<result filename=\"{result.DocumentId}\" page_number=\"{result.PageNumber}\">{result.Text}</result>");
     }
 
-    [Description("Generates images based on a text description, returns either a full or partial URI pointing at the image")]
+    [Description("Generates images based on a text description")]
     private async IAsyncEnumerable<AIContent> GenerateImagesAsync(
         [Description("A detailed description of the image to generate")] string prompt,
         [Description("The number of images to generate.  Some models only support generating one image at a time.")] int count = 1)
     {
         var options = new TextToImageOptions()
         {
-            ContentType = TextToImageContentType.Data, // Changed to Base64 to get the actual image data
             Count = count,
         };
 
