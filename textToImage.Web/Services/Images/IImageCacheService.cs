@@ -10,7 +10,14 @@ public interface IImageCacheService
     /// <param name="fileName">Optional filename for the cached image</param>
     /// <returns>A URI that can be used to retrieve the cached image</returns>
     Task<string> CacheImageAsync(byte[] imageBytes, string contentType, string? fileName = null);
-
+    /// <summary>
+    /// Stores image stream and returns a URI to access the cached image
+    /// </summary>
+    /// <param name="imageStream">The image data to cache</param>
+    /// <param name="contentType">The MIME type of the image (e.g., "image/png", "image/jpeg")</param>
+    /// <param name="fileName">Optional filename for the cached image</param>
+    /// <returns>A URI that can be used to retrieve the cached image</returns>
+    Task<string> CacheImageAsync(Stream imageStream, string contentType, string? fileName = null);
     /// <summary>
     /// Retrieves cached image data
     /// </summary>

@@ -3,6 +3,7 @@
 @using System.Runtime.InteropServices
 @using textToImage.Web.Services.Images
 @inject IChatClient ChatClient
+@inject IHttpClientFactory HttpClientFactory
 @inject ITextToImageClient ImageClient
 @inject NavigationManager Nav
 @inject SemanticSearch Search
@@ -50,6 +51,7 @@
     private ChatMessage? currentResponseMessage;
     private ChatInput? chatInput;
     private ChatSuggestions? chatSuggestions;
+    private HttpClient? httpClient;
 
     protected override void OnInitialized()
     {
@@ -59,6 +61,7 @@
             AIFunctionFactory.Create(SearchAsync),
             AIFunctionFactory.Create(GenerateImagesAsync)
         ];
+        httpClient = HttpClientFactory.CreateClient();
     }
 
     private async Task AddUserMessageAsync(ChatMessage userMessage)
@@ -133,19 +136,29 @@
 
         foreach (var content in response.Contents)
         {
-            if (content is not DataContent dataContent)
+            if (content is DataContent dataContent)
+            {
+                var bytes = MemoryMarshal.TryGetArray(dataContent.Data, out var segment)
+                    ? segment.Array!
+                    : dataContent.Data.ToArray();
+
+                var cacheUri = await ImageCache.CacheImageAsync(bytes, dataContent.MediaType);
+
+                yield return new UriContent(Nav.ToAbsoluteUri(cacheUri), dataContent.MediaType);
+            }
+            else if (content is UriContent uriContent)
+            {
+                // the URI returned from the client contains a secret, download and cache the file.                
+                var stream = await httpClient!.GetStreamAsync(uriContent.Uri);
+
+                var cacheUri = await ImageCache.CacheImageAsync(stream, uriContent.MediaType);
+
+                yield return new UriContent(Nav.ToAbsoluteUri(cacheUri), uriContent.MediaType);
+            }
+            else
             {
                 yield return content;
-                continue;
             }
-
-            var bytes = MemoryMarshal.TryGetArray(dataContent.Data, out var segment)
-                ? segment.Array!
-                : dataContent.Data.ToArray();
-
-            var cacheUri = await ImageCache.CacheImageAsync(bytes, dataContent.MediaType);
-
-            yield return new UriContent(Nav.ToAbsoluteUri(cacheUri), dataContent.MediaType);
         }
     }
 

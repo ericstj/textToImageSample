@@ -24,45 +24,88 @@ public class ImageCacheService : IImageCacheService, IDisposable
 
     public async Task<string> CacheImageAsync(byte[] imageBytes, string contentType, string? fileName = null)
     {
+        using var memoryStream = new MemoryStream(imageBytes);
+        return await CacheImageFromStreamInternalAsync(memoryStream, contentType, fileName);
+    }
+
+    public async Task<string> CacheImageAsync(Stream imageStream, string contentType, string? fileName = null)
+    {
+        return await CacheImageFromStreamInternalAsync(imageStream, contentType, fileName);
+    }
+
+    private async Task<string> CacheImageFromStreamInternalAsync(Stream imageStream, string contentType, string? fileName = null)
+    {
         try
         {
-            // Generate a unique identifier for the image
-            var imageId = GenerateImageId(imageBytes);
-            
-            // Check if image already exists
+            // Generate a temporary file path
+            var tempFileName = $"temp_{Guid.NewGuid():N}";
+            var extension = GetFileExtension(contentType);
+            var tempFilePath = Path.Combine(_cacheDirectory, $"{tempFileName}{extension}");
+
+            string imageId;
+            long fileSize;
+
+            // Stream the image to a temporary file while calculating the hash
+            using (var sha256 = SHA256.Create())
+            using (var fileStream = new FileStream(tempFilePath, FileMode.Create, FileAccess.Write))
+            using (var cryptoStream = new CryptoStream(fileStream, sha256, CryptoStreamMode.Write))
+            {
+                await imageStream.CopyToAsync(cryptoStream);
+                cryptoStream.FlushFinalBlock();
+                
+                // Get the computed hash
+                var hash = sha256.Hash!;
+                imageId = Convert.ToHexString(hash).ToLowerInvariant();
+                
+                // Get file size
+                fileSize = fileStream.Length;
+            }
+
+            // Check if image already exists after calculating the hash
             if (_imageMetadata.ContainsKey(imageId))
             {
-                _logger.LogDebug("Image {ImageId} already cached", imageId);
+                _logger.LogDebug("Image {ImageId} already cached, removing temporary file", imageId);
+                // Clean up temporary file since we already have this image
+                File.Delete(tempFilePath);
                 return $"/api/images/{imageId}";
             }
 
-            // Determine file extension from content type
-            var extension = GetFileExtension(contentType);
-            var filePath = Path.Combine(_cacheDirectory, $"{imageId}{extension}");
-
-            // Save image to disk
-            await File.WriteAllBytesAsync(filePath, imageBytes);
-
-            // Store metadata
-            var metadata = new CachedImageMetadata
-            {
-                ImageId = imageId,
-                ContentType = contentType,
-                FileName = fileName,
-                FilePath = filePath,
-                CreatedAt = DateTime.UtcNow,
-                FileSize = imageBytes.Length
-            };
-
-            _imageMetadata[imageId] = metadata;
-
-            _logger.LogInformation("Cached image {ImageId} ({FileSize} bytes)", imageId, imageBytes.Length);
+            // Rename temporary file to final name
+            var finalFilePath = Path.Combine(_cacheDirectory, $"{imageId}{extension}");
             
+            // Handle case where target file might already exist from concurrent operations
+            if (File.Exists(finalFilePath))
+            {
+                File.Delete(tempFilePath);
+                _logger.LogDebug("Image {ImageId} was cached by concurrent operation", imageId);
+            }
+            else
+            {
+                File.Move(tempFilePath, finalFilePath);
+            }
+
+            // Store metadata only if we don't already have it
+            if (!_imageMetadata.ContainsKey(imageId))
+            {
+                var metadata = new CachedImageMetadata
+                {
+                    ImageId = imageId,
+                    ContentType = contentType,
+                    FileName = fileName,
+                    FilePath = finalFilePath,
+                    CreatedAt = DateTime.UtcNow,
+                    FileSize = fileSize
+                };
+
+                _imageMetadata[imageId] = metadata;
+                _logger.LogInformation("Cached image {ImageId} ({FileSize} bytes)", imageId, fileSize);
+            }
+
             return $"/api/images/{imageId}";
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error caching image");
+            _logger.LogError(ex, "Error caching image from stream");
             throw;
         }
     }
@@ -131,6 +174,9 @@ public class ImageCacheService : IImageCacheService, IDisposable
                 await RemoveCachedImageAsync(imageId);
             }
 
+            // Also clean up any temporary files that might have been left behind
+            await CleanupTemporaryFilesAsync();
+
             _logger.LogInformation("Cleaned up {Count} old cached images", imagesToRemove.Count);
         }
         catch (Exception ex)
@@ -139,11 +185,31 @@ public class ImageCacheService : IImageCacheService, IDisposable
         }
     }
 
-    private string GenerateImageId(byte[] imageBytes)
+    private async Task CleanupTemporaryFilesAsync()
     {
-        using var sha256 = SHA256.Create();
-        var hash = sha256.ComputeHash(imageBytes);
-        return Convert.ToHexString(hash).ToLowerInvariant();
+        try
+        {
+            var tempFiles = Directory.GetFiles(_cacheDirectory, "temp_*")
+                .Where(file => File.GetCreationTime(file) < DateTime.Now.AddHours(-1)) // Remove temp files older than 1 hour
+                .ToList();
+
+            foreach (var tempFile in tempFiles)
+            {
+                try
+                {
+                    File.Delete(tempFile);
+                    _logger.LogDebug("Cleaned up temporary file {TempFile}", tempFile);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to delete temporary file {TempFile}", tempFile);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during temporary files cleanup");
+        }
     }
 
     private static string GetFileExtension(string contentType)
@@ -167,7 +233,10 @@ public class ImageCacheService : IImageCacheService, IDisposable
             if (!Directory.Exists(_cacheDirectory))
                 return;
 
-            var files = Directory.GetFiles(_cacheDirectory);
+            var files = Directory.GetFiles(_cacheDirectory)
+                .Where(file => !Path.GetFileName(file).StartsWith("temp_")) // Skip temporary files
+                .ToArray();
+
             foreach (var filePath in files)
             {
                 var fileName = Path.GetFileNameWithoutExtension(filePath);
