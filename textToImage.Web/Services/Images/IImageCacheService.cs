@@ -21,9 +21,9 @@ public interface IImageCacheService
     /// <summary>
     /// Retrieves cached image data
     /// </summary>
-    /// <param name="imageId">The unique identifier for the cached image</param>
+    /// <param name="imageIdOrUri">The unique identifier for the cached image, or Uri for the image</param>
     /// <returns>The cached image data and content type, or null if not found</returns>
-    Task<(byte[] imageBytes, string contentType)?> GetCachedImageAsync(string imageId);
+    Task<(byte[] imageBytes, string contentType)?> GetCachedImageAsync(string imageIdOrUri);
 
     /// <summary>
     /// Removes a cached image

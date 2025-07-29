@@ -59,7 +59,8 @@
         chatOptions.Tools = 
         [
             AIFunctionFactory.Create(SearchAsync),
-            AIFunctionFactory.Create(GenerateImagesAsync)
+            AIFunctionFactory.Create(GenerateImagesAsync),
+            AIFunctionFactory.Create(EditImageAsync)
         ];
         httpClient = HttpClientFactory.CreateClient();
     }
@@ -134,31 +135,73 @@
 
         var response = await ImageClient.GenerateImagesAsync(prompt, options);
 
+        foreach(var content in response.Contents)
+        {
+            var cachedContent = await CacheContent(content);
+            yield return cachedContent;
+        }
+    }
+
+    [Description("Edits an existing image based on a text description")]
+    private async IAsyncEnumerable<AIContent> EditImageAsync(
+        [Description("The URL of the image to edit")] string imageUrl,
+        [Description("A detailed description of the image to edit")] string prompt,
+        [Description("The number of images to generate.  Some models only support generating one image at a time.")] int count = 1)
+    {
+        var options = new TextToImageOptions()
+        {
+            Count = count,
+        };
+
+        DataContent dataContent;
+        var cachedData = await ImageCache.GetCachedImageAsync(imageUrl);
+        if (cachedData is not null)
+        {
+            // the image is cached, so we can use it directly
+            dataContent = new DataContent(cachedData.Value.imageBytes, cachedData.Value.contentType);
+        }
+        else
+        {
+            // download the image from the URL
+            var imageResponse = await httpClient!.GetAsync(imageUrl);
+            var imageBytes = await imageResponse.Content.ReadAsByteArrayAsync();
+
+            dataContent = new DataContent(imageBytes, imageResponse.Content.Headers.ContentType?.MediaType ?? "image/png");
+        }
+
+        var response = await ImageClient.EditImageAsync(dataContent, prompt, options);
+
         foreach (var content in response.Contents)
         {
-            if (content is DataContent dataContent)
-            {
-                var bytes = MemoryMarshal.TryGetArray(dataContent.Data, out var segment)
-                    ? segment.Array!
-                    : dataContent.Data.ToArray();
+            var cachedContent = await CacheContent(content);
+            yield return cachedContent;
+        }
+    }
 
-                var cacheUri = await ImageCache.CacheImageAsync(bytes, dataContent.MediaType);
+    private async Task<AIContent> CacheContent(AIContent content)
+    {
+        if (content is DataContent dataContent)
+        {
+            var bytes = MemoryMarshal.TryGetArray(dataContent.Data, out var segment)
+                ? segment.Array!
+                : dataContent.Data.ToArray();
 
-                yield return new UriContent(Nav.ToAbsoluteUri(cacheUri), dataContent.MediaType);
-            }
-            else if (content is UriContent uriContent)
-            {
-                // the URI returned from the client contains a secret, download and cache the file.                
-                var stream = await httpClient!.GetStreamAsync(uriContent.Uri);
+            var cacheUri = await ImageCache.CacheImageAsync(bytes, dataContent.MediaType);
 
-                var cacheUri = await ImageCache.CacheImageAsync(stream, uriContent.MediaType);
+            return new UriContent(Nav.ToAbsoluteUri(cacheUri), dataContent.MediaType);
+        }
+        else if (content is UriContent uriContent)
+        {
+            // the URI returned from the client contains a secret, download and cache the file.
+            var stream = await httpClient!.GetStreamAsync(uriContent.Uri);
 
-                yield return new UriContent(Nav.ToAbsoluteUri(cacheUri), uriContent.MediaType);
-            }
-            else
-            {
-                yield return content;
-            }
+            var cacheUri = await ImageCache.CacheImageAsync(stream, uriContent.MediaType);
+
+            return new UriContent(Nav.ToAbsoluteUri(cacheUri), uriContent.MediaType);
+        }
+        else
+        {
+            return content;
         }
     }
 

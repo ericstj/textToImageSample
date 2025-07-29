@@ -110,10 +110,21 @@ public class ImageCacheService : IImageCacheService, IDisposable
         }
     }
 
-    public async Task<(byte[] imageBytes, string contentType)?> GetCachedImageAsync(string imageId)
+    public async Task<(byte[] imageBytes, string contentType)?> GetCachedImageAsync(string imageIdOrUri)
     {
         try
         {
+            string imageId = imageIdOrUri;
+
+            if (Uri.TryCreate(imageIdOrUri, UriKind.RelativeOrAbsolute, out var uri))
+            {
+                var uriPath = uri.IsAbsoluteUri ? uri.LocalPath : uri.OriginalString;
+                if (uriPath.StartsWith("/api/images/", StringComparison.OrdinalIgnoreCase))
+                {
+                    imageId = Path.GetFileNameWithoutExtension(uriPath);
+                }
+            }
+
             if (!_imageMetadata.TryGetValue(imageId, out var metadata))
             {
                 _logger.LogWarning("Image {ImageId} not found in cache", imageId);
@@ -132,7 +143,7 @@ public class ImageCacheService : IImageCacheService, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving cached image {ImageId}", imageId);
+            _logger.LogError(ex, "Error retrieving cached image {ImageIdOrUri}", imageIdOrUri);
             return null;
         }
     }
