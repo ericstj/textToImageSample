@@ -129,6 +129,7 @@
         [Description("A detailed description of the image to generate")] string prompt,
         [Description("The number of images to generate.  Some models only support generating one image at a time.")] int count = 1)
     {
+        await InvokeAsync(StateHasChanged);
         var options = new TextToImageOptions()
         {
             Count = count,
@@ -149,6 +150,7 @@
         [Description("A detailed description of the image to edit")] string prompt,
         [Description("The number of images to generate.  Some models only support generating one image at a time.")] int count = 1)
     {
+        await InvokeAsync(StateHasChanged);
         var options = new TextToImageOptions()
         {
             Count = count,
