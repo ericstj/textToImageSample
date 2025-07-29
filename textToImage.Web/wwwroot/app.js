@@ -3,7 +3,7 @@ import * as marked from './lib/marked/dist/marked.esm.js';
 
 const purify = DOMPurify(window);
 
-customElements.define('assistant-message', class extends HTMLElement {
+customElements.define('markdown-message', class extends HTMLElement {
     static observedAttributes = ['markdown'];
 
     attributeChangedCallback(name, oldValue, newValue) {

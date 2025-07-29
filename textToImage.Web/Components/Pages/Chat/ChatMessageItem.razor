@@ -5,7 +5,7 @@
 @if (Message.Role == ChatRole.User)
 {
     <div class="user-message">
-        @Message.Text
+        <markdown-message markdown="@Message.Text"></markdown-message>
     </div>
 }
 else if (Message.Role == ChatRole.Assistant)
@@ -24,7 +24,7 @@ else if (Message.Role == ChatRole.Assistant)
                 </div>
                 <div class="assistant-message-header">Assistant</div>
                 <div class="assistant-message-text">
-                    <assistant-message markdown="@text"></assistant-message>
+                    <markdown-message markdown="@text"></markdown-message>
 
                     @foreach (var citation in citations ?? [])
                     {

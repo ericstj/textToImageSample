@@ -113,7 +113,7 @@ async function uploadImageAndUpdateTextArea(fileName, base64Data, contentType, t
             const result = await response.json();
             const markdownText = `![${fileName}](${result.imageUri})`;
             const currentValue = textArea.value || '';
-            const newValue = currentValue.length > 0 ? `${currentValue}\n\n${markdownText}` : markdownText;
+            const newValue = currentValue.length > 0 ? `${currentValue}${markdownText}` : markdownText;
 
             textArea.value = newValue;
             textArea.dispatchEvent(new CustomEvent('input', { bubbles: true }));
