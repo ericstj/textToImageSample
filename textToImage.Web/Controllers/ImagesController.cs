@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using textToImage.Web.Services.Images;
 
@@ -54,9 +55,11 @@ public class ImagesController : ControllerBase
             }
 
             var imageBytes = Convert.FromBase64String(request.Base64Data);
-            var imageUri = await _imageCacheService.CacheImageAsync(imageBytes, request.ContentType, request.FileName);
-            
-            return Ok(new { ImageUri = imageUri });
+            var relativeImageUri = await _imageCacheService.CacheImageAsync(imageBytes, request.ContentType, request.FileName);
+
+            // Convert relative URI to absolute URI
+            var baseUri = new Uri($"{Request.Scheme}://{Request.Host}");
+            return Ok(new { ImageUri = new Uri(baseUri, relativeImageUri) });
         }
         catch (Exception ex)
         {

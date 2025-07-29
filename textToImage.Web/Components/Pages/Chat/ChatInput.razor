@@ -1,7 +1,7 @@
 @inject IJSRuntime JS
 
 <EditForm Model="@this" OnValidSubmit="@SendMessageAsync">
-    <label class="input-box page-width">
+    <label class="input-box page-width" @ref="@inputContainer">
         <textarea @ref="@textArea" @bind="@messageText" placeholder="Type your message..." rows="1"></textarea>
 
         <div class="tools">
@@ -16,7 +16,9 @@
 
 @code {
     private ElementReference textArea;
+    private ElementReference inputContainer;
     private string? messageText;
+    private IJSObjectReference? jsModule;
 
     [Parameter]
     public EventCallback<ChatMessage> OnSend { get; set; }
@@ -32,16 +34,28 @@
             await OnSend.InvokeAsync(new ChatMessage(ChatRole.User, text));
         }
     }
-
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
             try
             {
-                var module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Pages/Chat/ChatInput.razor.js");
-                await module.InvokeVoidAsync("init", textArea);
-                await module.DisposeAsync();
+                jsModule = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Pages/Chat/ChatInput.razor.js");
+                await jsModule.InvokeVoidAsync("init", textArea, inputContainer);
+            }
+            catch (JSDisconnectedException)
+            {
+            }
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (jsModule is not null)
+        {
+            try
+            {
+                await jsModule.DisposeAsync();
             }
             catch (JSDisconnectedException)
             {

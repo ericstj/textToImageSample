@@ -6,10 +6,17 @@
     border-radius: 8px;
     padding: 0.5rem 0.75rem;
     margin-top: 0.75rem; 
+    transition: border-color 0.2s ease, background-color 0.2s ease;
 }
 
     .input-box:focus-within {
         outline: 2px solid #4152d5;
+    }
+
+    .input-box.drag-over {
+        border-color: #4152d5;
+        border-style: dashed;
+        background-color: rgba(65, 82, 213, 0.05);
     }
 
 textarea {
