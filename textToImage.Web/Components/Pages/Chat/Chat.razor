@@ -172,7 +172,7 @@
             dataContent = new DataContent(imageBytes, imageResponse.Content.Headers.ContentType?.MediaType ?? "image/png");
         }
 
-        var response = await ImageClient.EditImageAsync(dataContent, prompt, options);
+        var response = await ImageClient.EditImagesAsync([dataContent], prompt, options);
 
         foreach (var content in response.Contents)
         {

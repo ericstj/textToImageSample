@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>5a486a16-fefa-4602-8107-4195eeeaf1e9</UserSecretsId>
-    <MicrosoftExtensionsAIVersion>9.8.0-ericstj05</MicrosoftExtensionsAIVersion>
+    <MicrosoftExtensionsAIVersion>9.8.0-ericstj07</MicrosoftExtensionsAIVersion>
     <NoWarn>$(NoWarn);MEAI001</NoWarn>
   </PropertyGroup>
 
