@@ -25,4 +25,8 @@
     <ProjectReference Include="..\textToImage.ServiceDefaults\textToImage.ServiceDefaults.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="StabilityAI\" />
+  </ItemGroup>
+
 </Project>

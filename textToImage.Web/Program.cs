@@ -18,7 +18,12 @@ openai.AddChatClient("gpt-4o-mini")
     .UseOpenTelemetry(configure: c =>
         c.EnableSensitiveData = builder.Environment.IsDevelopment());
 openai.AddEmbeddingGenerator("text-embedding-3-small");
-openai.AddTextToImageClient("gpt-image-1");
+
+// openai.AddTextToImageClient("gpt-image-1");
+builder.AddStabilityAITextToImageClient("StabilityAI", options =>
+{
+    options.Model = "ultra";
+});
 
 builder.AddAzureSearchClient("azureAISearch");
 builder.Services.AddAzureAISearchCollection<IngestedChunk>("data-texttoimage-chunks");

@@ -30,7 +30,22 @@ public static class Extensions
 #pragma warning restore EXTEXP0001
 
             // Turn on resilience by default
-            http.AddStandardResilienceHandler();
+            http.AddStandardResilienceHandler(httpResilienceOptions =>
+            {
+                // Set a longer timeouts.  Our image models can take a while to generate images.
+                httpResilienceOptions.TotalRequestTimeout = new()
+                {
+                    Timeout = TimeSpan.FromMinutes(10)
+                };
+
+                httpResilienceOptions.AttemptTimeout = new()
+                {
+                    Timeout = TimeSpan.FromMinutes(2)
+                };
+
+                httpResilienceOptions.CircuitBreaker.SamplingDuration = TimeSpan.FromMinutes(5);
+
+            });
 
             // Turn on service discovery by default
             http.AddServiceDiscovery();
