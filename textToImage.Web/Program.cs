@@ -1,9 +1,11 @@
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Azure;
+using OpenAI;
+using System.ClientModel.Primitives;
 using textToImage.Web.Components;
 using textToImage.Web.Services;
-using textToImage.Web.Services.Ingestion;
-using OpenAI;
 using textToImage.Web.Services.Images;
+using textToImage.Web.Services.Ingestion;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
@@ -12,8 +14,12 @@ builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 // Add controllers for the image API
 builder.Services.AddControllers();
 
-var openai = builder.AddAzureOpenAIClient("openai");
-openai.AddChatClient("gpt-4o-mini")
+var openai = builder.AddAzureOpenAIClient("openai", configureClientBuilder: builder =>
+{
+    builder.ConfigureOptions(options => options.AddPolicy(new AddImageGenerationDeploymentHeaderPolicy(), PipelinePosition.BeforeTransport));
+});
+// openai.AddChatClient("gpt-4o-mini")
+openai.AddResponseChatClient("gpt-4o-mini")
     .UseFunctionInvocation()
     .UseOpenTelemetry(configure: c =>
         c.EnableSensitiveData = builder.Environment.IsDevelopment());
@@ -67,3 +73,18 @@ await DataIngestor.IngestDataAsync(
     new PDFDirectorySource(Path.Combine(builder.Environment.WebRootPath, "Data")));
 
 app.Run();
+
+public class AddImageGenerationDeploymentHeaderPolicy : PipelinePolicy
+{
+    public override void Process(PipelineMessage message, IReadOnlyList<PipelinePolicy> pipeline, int currentIndex)
+    {
+        message.Request.Headers.Add("x-ms-oai-image-generation-deployment", "gpt-image-1");
+        ProcessNext(message, pipeline, currentIndex);
+    }
+
+    public override async ValueTask ProcessAsync(PipelineMessage message, IReadOnlyList<PipelinePolicy> pipeline, int currentIndex)
+    {
+        message.Request.Headers.Add("x-ms-oai-image-generation-deployment", "gpt-image-1");
+        await ProcessNextAsync(message, pipeline, currentIndex);
+    }
+}

@@ -5,13 +5,13 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>5a486a16-fefa-4602-8107-4195eeeaf1e9</UserSecretsId>
-    <MicrosoftExtensionsAIVersion>9.8.0-ericstj10</MicrosoftExtensionsAIVersion>
+    <MicrosoftExtensionsAIVersion>9.9.0-ericstj11</MicrosoftExtensionsAIVersion>
     <NoWarn>$(NoWarn);MEAI001</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Aspire.Azure.AI.OpenAI" Version="9.3.0-preview.1.25265.20" />
-    <PackageReference Include="Azure.AI.OpenAI" Version="2.3.0-alpha.20250805.1" />
+    <PackageReference Include="Azure.AI.OpenAI" Version="2.3.0-beta.1" />
     <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="$(MicrosoftExtensionsAIVersion)" />
     <PackageReference Include="Microsoft.Extensions.AI" Version="$(MicrosoftExtensionsAIVersion)" />
     <PackageReference Include="Microsoft.SemanticKernel.Core" Version="1.53.0" />

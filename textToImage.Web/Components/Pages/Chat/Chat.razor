@@ -60,8 +60,12 @@
         chatOptions.Tools = 
         [
             AIFunctionFactory.Create(SearchAsync),
-            AIFunctionFactory.Create(GenerateImagesAsync),
-            AIFunctionFactory.Create(EditImageAsync)
+            new ImageGenerationTool(new TextToImageOptions()
+            {
+                ModelId = "gpt-image-01"                
+            })
+        // AIFunctionFactory.Create(GenerateImagesAsync),
+        // AIFunctionFactory.Create(EditImageAsync)
         ];
         httpClient = HttpClientFactory.CreateClient();
     }
@@ -75,10 +79,16 @@
         chatSuggestions?.Clear();
         await chatInput!.FocusAsync();
 
+        var response = await ChatClient.GetResponseAsync([.. messages], chatOptions, CancellationToken.None);
+        messages.AddMessages(response);
+#if false
         // Stream and display a new response from the IChatClient
         var responseText = new TextContent("");
         currentResponseMessage = new ChatMessage(ChatRole.Assistant, [responseText]);
         currentResponseCancellation = new();
+
+        responseText.Text += response.Text;
+        ChatMessageItem.NotifyChanged(currentResponseMessage);
         await foreach (var update in ChatClient.GetStreamingResponseAsync([.. messages], chatOptions, currentResponseCancellation.Token))
         {
             messages.AddMessages(update, filter: c => c is not TextContent);
@@ -89,6 +99,7 @@
         // Store the final response in the conversation, and begin getting suggestions
         messages.Add(currentResponseMessage!);
         currentResponseMessage = null;
+    #endif
         chatSuggestions?.Update(messages);
     }
 
