@@ -84,23 +84,23 @@
         await CacheImages(response);
         messages.AddMessages(response);
 #if false
-        // Stream and display a new response from the IChatClient
-        var responseText = new TextContent("");
-        currentResponseMessage = new ChatMessage(ChatRole.Assistant, [responseText]);
-        currentResponseCancellation = new();
+    // Stream and display a new response from the IChatClient
+    var responseText = new TextContent("");
+    currentResponseMessage = new ChatMessage(ChatRole.Assistant, [responseText]);
+    currentResponseCancellation = new();
 
-        responseText.Text += response.Text;
-        ChatMessageItem.NotifyChanged(currentResponseMessage);
-        await foreach (var update in ChatClient.GetStreamingResponseAsync([.. messages], chatOptions, currentResponseCancellation.Token))
-        {
-            messages.AddMessages(update, filter: c => c is not TextContent);
-            responseText.Text += update.Text;
-            ChatMessageItem.NotifyChanged(currentResponseMessage);
-        }
+    responseText.Text += response.Text;
+    ChatMessageItem.NotifyChanged(currentResponseMessage);
+    await foreach (var update in ChatClient.GetStreamingResponseAsync([.. messages], chatOptions, currentResponseCancellation.Token))
+    {
+    messages.AddMessages(update, filter: c => c is not TextContent);
+    responseText.Text += update.Text;
+    ChatMessageItem.NotifyChanged(currentResponseMessage);
+    }
 
-        // Store the final response in the conversation, and begin getting suggestions
-        messages.Add(currentResponseMessage!);
-        currentResponseMessage = null;
+    // Store the final response in the conversation, and begin getting suggestions
+    messages.Add(currentResponseMessage!);
+    currentResponseMessage = null;
     #endif
         chatSuggestions?.Update(messages);
     }
@@ -199,8 +199,14 @@
         foreach(var message in response.Messages ?? Enumerable.Empty<ChatMessage>())
         {
             Queue<string> cachedUris = new();
-            foreach (var dataContent in message.Contents.OfType<DataContent>())
+            for (int i = 0; i < message.Contents.Count; i++)
             {
+                var content = message.Contents[i];
+                if (content is not DataContent dataContent)
+                {
+                    continue;
+                }
+
                 var bytes = MemoryMarshal.TryGetArray(dataContent.Data, out var segment)
                     ? segment.Array!
                     : dataContent.Data.ToArray();
@@ -208,6 +214,8 @@
                 var cacheUri = await ImageCache.CacheImageAsync(bytes, dataContent.MediaType);
 
                 cachedUris.Enqueue(Nav.ToAbsoluteUri(cacheUri).ToString());
+
+                message.Contents.RemoveAt(i--);
             }
 
             foreach (var textContent in message.Contents.OfType<TextContent>())
