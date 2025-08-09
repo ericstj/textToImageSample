@@ -5,7 +5,7 @@
 @using textToImage.Web.Services.Images
 @inject IChatClient ChatClient
 @inject IHttpClientFactory HttpClientFactory
-@inject ITextToImageClient ImageClient
+@inject IImageClient ImageClient
 @inject NavigationManager Nav
 @inject SemanticSearch Search
 @inject IImageCacheService ImageCache
@@ -61,7 +61,7 @@
         chatOptions.Tools = 
         [
             AIFunctionFactory.Create(SearchAsync),
-            new ImageGenerationTool(new TextToImageOptions()
+            new ImageGenerationTool(new ImageOptions()
             {
                 ModelId = "gpt-image-01"                
             })
@@ -143,7 +143,7 @@
         [Description("The number of images to generate.  Some models only support generating one image at a time.")] int count = 1)
     {
         await InvokeAsync(StateHasChanged);
-        var options = new TextToImageOptions()
+        var options = new ImageOptions()
         {
             Count = count,
         };
@@ -164,7 +164,7 @@
         [Description("The number of images to generate.  Some models only support generating one image at a time.")] int count = 1)
     {
         await InvokeAsync(StateHasChanged);
-        var options = new TextToImageOptions()
+        var options = new ImageOptions()
         {
             Count = count,
         };

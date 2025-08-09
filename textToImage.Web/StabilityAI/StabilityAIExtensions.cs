@@ -19,7 +19,7 @@ public static class StabilityAIExtensions
     /// <returns>An <see cref="ITextToImageClient"/> configured for Stability AI.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="apiKey"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException"><paramref name="apiKey"/> is empty or whitespace.</exception>
-    public static ITextToImageClient AsStabilityAITextToImageClient(
+    public static IImageClient AsStabilityAITextToImageClient(
         this HttpClient? httpClient,
         string apiKey,
         string? model = null,
@@ -43,7 +43,7 @@ public static class StabilityAIExtensions
     /// <returns>An <see cref="ITextToImageClient"/> configured for Stability AI.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="apiKey"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException"><paramref name="apiKey"/> is empty or whitespace.</exception>
-    public static ITextToImageClient CreateStabilityAITextToImageClient(
+    public static IImageClient CreateStabilityAITextToImageClient(
         string apiKey,
         string? model = null,
         Uri? endpoint = null)
@@ -59,7 +59,7 @@ public static class StabilityAIExtensions
     /// <param name="configure">An optional callback to configure the <see cref="StabilityAIOptions"/>.</param>
     /// <param name="lifetime">The service lifetime. Defaults to <see cref="ServiceLifetime.Singleton"/>.</param>
     /// <returns>A <see cref="TextToImageClientBuilder"/> that can be used to build a pipeline around the client.</returns>
-    public static TextToImageClientBuilder AddStabilityAITextToImageClient(
+    public static ImageClientBuilder AddStabilityAITextToImageClient(
         this IServiceCollection services,
         Action<StabilityAIOptions>? configure = null,
         ServiceLifetime lifetime = ServiceLifetime.Singleton)
@@ -71,7 +71,7 @@ public static class StabilityAIExtensions
             services.Configure(configure);
         }
 
-        return services.AddTextToImageClient(serviceProvider =>
+        return services.AddImageClient(serviceProvider =>
         {
             var options = serviceProvider.GetRequiredService<IOptions<StabilityAIOptions>>().Value;
             var httpClient = serviceProvider.GetRequiredService<HttpClient>();
@@ -90,7 +90,7 @@ public static class StabilityAIExtensions
     /// <param name="configurationSection">The configuration section containing Stability AI options.</param>
     /// <param name="lifetime">The service lifetime. Defaults to <see cref="ServiceLifetime.Singleton"/>.</param>
     /// <returns>A <see cref="TextToImageClientBuilder"/> that can be used to build a pipeline around the client.</returns>
-    public static TextToImageClientBuilder AddStabilityAITextToImageClient(
+    public static ImageClientBuilder AddStabilityAITextToImageClient(
         this IServiceCollection services,
         IConfigurationSection configurationSection,
         ServiceLifetime lifetime = ServiceLifetime.Singleton)
@@ -100,7 +100,7 @@ public static class StabilityAIExtensions
 
         services.Configure<StabilityAIOptions>(configurationSection);
 
-        return services.AddTextToImageClient(serviceProvider =>
+        return services.AddImageClient(serviceProvider =>
         {
             var options = serviceProvider.GetRequiredService<IOptions<StabilityAIOptions>>().Value;
             var httpClient = serviceProvider.GetRequiredService<HttpClient>();
@@ -120,7 +120,7 @@ public static class StabilityAIExtensions
     /// <param name="configure">An optional callback to configure the <see cref="StabilityAIOptions"/>.</param>
     /// <param name="lifetime">The service lifetime. Defaults to <see cref="ServiceLifetime.Singleton"/>.</param>
     /// <returns>A <see cref="TextToImageClientBuilder"/> that can be used to build a pipeline around the client.</returns>
-    public static TextToImageClientBuilder AddKeyedStabilityAITextToImageClient(
+    public static ImageClientBuilder AddKeyedStabilityAITextToImageClient(
         this IServiceCollection services,
         object serviceKey,
         Action<StabilityAIOptions>? configure = null,
@@ -134,7 +134,7 @@ public static class StabilityAIExtensions
             services.Configure(configure);
         }
 
-        return services.AddKeyedTextToImageClient(serviceKey, serviceProvider =>
+        return services.AddKeyedImageClient(serviceKey, serviceProvider =>
         {
             var options = serviceProvider.GetRequiredService<IOptions<StabilityAIOptions>>().Value;
             var httpClient = serviceProvider.GetRequiredService<HttpClient>();
@@ -154,7 +154,7 @@ public static class StabilityAIExtensions
     /// <param name="configureOptions">An optional callback to configure the <see cref="StabilityAIOptions"/>.</param>
     /// <param name="lifetime">The service lifetime. Defaults to <see cref="ServiceLifetime.Singleton"/>.</param>
     /// <returns>A <see cref="TextToImageClientBuilder"/> that can be used to build a pipeline around the client.</returns>
-    public static TextToImageClientBuilder AddStabilityAITextToImageClient(
+    public static ImageClientBuilder AddStabilityAITextToImageClient(
         this IHostApplicationBuilder builder,
         string connectionName,
         Action<StabilityAIOptions>? configureOptions = null,
@@ -186,7 +186,7 @@ public static class StabilityAIExtensions
             }
         }
 
-        return builder.Services.AddTextToImageClient(serviceProvider =>
+        return builder.Services.AddImageClient(serviceProvider =>
         {
             var options = serviceProvider.GetRequiredService<IOptions<StabilityAIOptions>>().Value;
             var httpClient = serviceProvider.GetRequiredService<HttpClient>();

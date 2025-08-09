@@ -20,13 +20,13 @@ public static class AspireOpenAIClientBuilderTextToImageClientExtensions
     /// <param name="builder">An <see cref="AspireOpenAIClientBuilder" />.</param>
     /// <param name="modelName">Optionally specifies which model deployment to use. If not specified, a value will be taken from the connection string.</param>
     /// <returns>A <see cref="TextToImageClientBuilder"/> that can be used to build a pipeline around the inner <see cref="ITextToImageClient"/>.</returns>
-    public static TextToImageClientBuilder AddTextToImageClient(
+    public static ImageClientBuilder AddTextToImageClient(
         this AspireOpenAIClientBuilder builder,
         string? modelName = null)
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        return builder.HostBuilder.Services.AddTextToImageClient(
+        return builder.HostBuilder.Services.AddImageClient(
             services => CreateInnerTextToImageClient(services, builder, modelName));
     }
 
@@ -37,7 +37,7 @@ public static class AspireOpenAIClientBuilderTextToImageClientExtensions
     /// <param name="serviceKey">The service key with which the <see cref="ITextToImageClient"/> will be registered.</param>
     /// <param name="modelName">Optionally specifies which model deployment to use. If not specified, a value will be taken from the connection string.</param>
     /// <returns>A <see cref="TextToImageClientBuilder"/> that can be used to build a pipeline around the inner <see cref="ITextToImageClient"/>.</returns>
-    public static TextToImageClientBuilder AddKeyedTextToImageClient(
+    public static ImageClientBuilder AddKeyedTextToImageClient(
         this AspireOpenAIClientBuilder builder,
         string serviceKey,
         string? modelName = null)
@@ -45,7 +45,7 @@ public static class AspireOpenAIClientBuilderTextToImageClientExtensions
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentException.ThrowIfNullOrEmpty(serviceKey);
 
-        return builder.HostBuilder.Services.AddKeyedTextToImageClient(
+        return builder.HostBuilder.Services.AddKeyedImageClient(
             serviceKey,
             services => CreateInnerTextToImageClient(services, builder, modelName));
     }
@@ -55,7 +55,7 @@ public static class AspireOpenAIClientBuilderTextToImageClientExtensions
     /// Note that this doesn't use ".UseOpenTelemetry()" because the order of the clients would be incorrect.
     /// We want the telemetry client to be the innermost client, right next to the inner <see cref="OpenAIClient"/>.
     /// </summary>
-    private static ITextToImageClient CreateInnerTextToImageClient(
+    private static IImageClient CreateInnerTextToImageClient(
         IServiceProvider services,
         AspireOpenAIClientBuilder builder,
         string? modelName)
@@ -68,7 +68,7 @@ public static class AspireOpenAIClientBuilderTextToImageClientExtensions
             ? services.GetRequiredService<OpenAIClient>()
             : services.GetRequiredKeyedService<OpenAIClient>(builder.ServiceKey);
 
-        var result = openAiClient.GetImageClient(modelName).AsITextToImageClient();
+        var result = openAiClient.GetImageClient(modelName).AsIImageClient();
 
         if (builder.DisableTracing)
         {
@@ -77,8 +77,8 @@ public static class AspireOpenAIClientBuilderTextToImageClientExtensions
 
         var loggerFactory = services.GetService<ILoggerFactory>();
         // should this be OpenTelemetryTextToImageClient?
-        return new LoggingTextToImageClient(
+        return new LoggingImageClient(
             result,
-            loggerFactory?.CreateLogger(typeof(LoggingTextToImageClient)));
+            loggerFactory?.CreateLogger(typeof(LoggingImageClient)));
     }
 }

@@ -6,8 +6,8 @@ using System.Net.Http.Headers;
 
 namespace Microsoft.Extensions.AI;
 
-/// <summary>Represents an <see cref="ITextToImageClient"/> for Stability AI.</summary>
-internal sealed class StabilityAITextToImageClient : ITextToImageClient
+/// <summary>Represents an <see cref="IImageClient"/> for Stability AI.</summary>
+internal sealed class StabilityAITextToImageClient : IImageClient
 {
     /// <summary>The default Stability AI API endpoint.</summary>
     public static readonly Uri DefaultBaseEndpoint = new Uri("https://api.stability.ai/v2beta/stable-image/generate/");
@@ -18,7 +18,7 @@ internal sealed class StabilityAITextToImageClient : ITextToImageClient
     public static string DefaultModel => "sd3-large";
 
     /// <summary>Metadata about the client.</summary>
-    private readonly TextToImageClientMetadata _metadata;
+    private readonly ImageClientMetadata _metadata;
 
     /// <summary>The underlying <see cref="HttpClient" />.</summary>
     private readonly HttpClient _httpClient;
@@ -56,25 +56,18 @@ internal sealed class StabilityAITextToImageClient : ITextToImageClient
     }
 
     /// <inheritdoc />
-    public async Task<TextToImageResponse> GenerateImagesAsync(string prompt, TextToImageOptions? options = null, CancellationToken cancellationToken = default)
+    public async Task<ImageResponse> GenerateImagesAsync(ImageRequest request, ImageOptions? options = null, CancellationToken cancellationToken = default)
     {
-        _ = Throw.IfNull(prompt);
+        _ = Throw.IfNull(request);
 
-        var properties = CreateRequestProperties(prompt, options);
+        var properties = CreateRequestProperties(request.Prompt, options);
 
-        var content = CreateRequestContent(properties);
+        if (request.OriginalImages is null)
+        {
+            var genContent = CreateRequestContent(properties);
 
-        return await SendRequestAsync(content, cancellationToken);
-    }
-
-    /// <inheritdoc />
-    public async Task<TextToImageResponse> EditImagesAsync(
-        IEnumerable<AIContent> originalImages, string prompt, TextToImageOptions? options = null, CancellationToken cancellationToken = default)
-    {
-        _ = Throw.IfNull(originalImages);
-        _ = Throw.IfNull(prompt);
-
-        var properties = CreateRequestProperties(prompt, options);
+            return await SendRequestAsync(genContent, cancellationToken);
+        }
 
         // we can use the image as a starting point for the generation and set strength to 0.85
         if (!properties.ContainsKey("strength"))
@@ -86,19 +79,18 @@ internal sealed class StabilityAITextToImageClient : ITextToImageClient
         var content = CreateRequestContent(properties);
 
         ByteArrayContent? imageContent = null;
-        foreach (AIContent originalImage in originalImages)
+        foreach (AIContent originalImage in request.OriginalImages)
         {
             if (imageContent is not null)
             {
                 // We only support a single image for editing.
                 Throw.ArgumentException(
                     "Only a single image can be provided for editing.",
-                    nameof(originalImages));
+                    nameof(request));
             }
 
             if (originalImage is DataContent dataContent)
             {
-                
                 imageContent = new ByteArrayContent(dataContent.Data.ToArray());
                 imageContent.Headers.ContentType = MediaTypeHeaderValue.Parse(dataContent.MediaType);
                 string name = dataContent.Name ?? dataContent.MediaType switch
@@ -116,14 +108,14 @@ internal sealed class StabilityAITextToImageClient : ITextToImageClient
                 // For now, we only support DataContent for image editing as OpenAI's API expects image data in a stream.
                 Throw.ArgumentException(
                     "The original image must be a DataContent instance containing image data.",
-                    nameof(originalImages));
+                    nameof(request));
             }
         }
 
         return await SendRequestAsync(content, cancellationToken);
     }
 
-    private async Task<TextToImageResponse> SendRequestAsync(MultipartFormDataContent content, CancellationToken cancellationToken)
+    private async Task<ImageResponse> SendRequestAsync(MultipartFormDataContent content, CancellationToken cancellationToken)
     {
         using var httpRequest = new HttpRequestMessage(HttpMethod.Post, _metadata.ProviderUri)
         {
@@ -146,14 +138,14 @@ internal sealed class StabilityAITextToImageClient : ITextToImageClient
 
         var dataContent = new DataContent(responseBytes, contentType);
 
-        return new TextToImageResponse([dataContent]);    
+        return new ImageResponse([dataContent]);    
     }
 
     /// <inheritdoc />
     public object? GetService(Type serviceType, object? serviceKey = null) =>
         serviceType is null ? throw new ArgumentNullException(nameof(serviceType)) :
         serviceKey is not null ? null :
-        serviceType == typeof(TextToImageClientMetadata) ? _metadata :
+        serviceType == typeof(ImageClientMetadata) ? _metadata :
         serviceType == typeof(HttpClient) ? _httpClient :
         serviceType.IsInstanceOfType(this) ? this :
         null;
@@ -168,7 +160,7 @@ internal sealed class StabilityAITextToImageClient : ITextToImageClient
     }
 
     /// <summary>Creates a generation request from the prompt and options.</summary>
-    private Dictionary<string, string?> CreateRequestProperties(string prompt, TextToImageOptions? options)
+    private Dictionary<string, string?> CreateRequestProperties(string prompt, ImageOptions? options)
     {
         Dictionary<string, string?> properties = options?.RawRepresentationFactory?.Invoke(this) as Dictionary<string, string?> ?? new();
 
@@ -221,5 +213,10 @@ internal sealed class StabilityAITextToImageClient : ITextToImageClient
         }
 
         return new Uri(DefaultBaseEndpoint, model);
+    }
+
+    public IAsyncEnumerable<ImageResponseUpdate> GenerateStreamingImagesAsync(ImageRequest request, ImageOptions? options = null, CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
     }
 }
