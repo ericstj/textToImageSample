@@ -1,6 +1,7 @@
 ﻿@page "/"
 @using System.ComponentModel
 @using System.Runtime.InteropServices
+@using System.Text.RegularExpressions
 @using textToImage.Web.Services.Images
 @inject IChatClient ChatClient
 @inject IHttpClientFactory HttpClientFactory
@@ -80,6 +81,7 @@
         await chatInput!.FocusAsync();
 
         var response = await ChatClient.GetResponseAsync([.. messages], chatOptions, CancellationToken.None);
+        await CacheImages(response);
         messages.AddMessages(response);
 #if false
         // Stream and display a new response from the IChatClient
@@ -189,6 +191,38 @@
         {
             var cachedContent = await CacheContent(content);
             yield return cachedContent;
+        }
+    }
+
+    private async Task CacheImages(ChatResponse response)
+    {
+        foreach(var message in response.Messages ?? Enumerable.Empty<ChatMessage>())
+        {
+            Queue<string> cachedUris = new();
+            foreach (var dataContent in message.Contents.OfType<DataContent>())
+            {
+                var bytes = MemoryMarshal.TryGetArray(dataContent.Data, out var segment)
+                    ? segment.Array!
+                    : dataContent.Data.ToArray();
+
+                var cacheUri = await ImageCache.CacheImageAsync(bytes, dataContent.MediaType);
+
+                cachedUris.Enqueue(Nav.ToAbsoluteUri(cacheUri).ToString());
+            }
+
+            foreach (var textContent in message.Contents.OfType<TextContent>())
+            {
+                // Find each image link in the text content and replace it with the cached URI
+                // Use a regex to find image links in the format ![description](url)
+                // Replace each in order of appearance
+                textContent.Text = Regex.Replace(textContent.Text, 
+                    @"!\[([^\]]*)\]\(([^)]+)\)", 
+                    match => 
+                    {
+                        string url = cachedUris.Dequeue();
+                        return $"![{match.Groups[1].Value}]({url})";
+                    });
+            }
         }
     }
 
